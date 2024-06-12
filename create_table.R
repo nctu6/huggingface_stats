@@ -15,7 +15,7 @@ df_model <- df %>%
   mutate(year = lubridate::year(date),
          month = lubridate::month(date)) %>%
   arrange(model_name, year, month) %>%
-  filter(!(model_name %in% c("ALL-MODELS-MOVED-TO-KBLAB", "tokenizer-test"))) %>%
+  filter(!(model_name %in% c("ModelCardReview", "cp.", "GGUF"))) %>%
   ungroup()
 
 df_model["month"] <- stringr::str_pad(df_model$month, side = "left", width = 2, pad = "0")
@@ -26,4 +26,5 @@ df_table <- df_model %>%
   tidyr::pivot_wider(names_from=yearmonth, values_from=downloads)
 
 
-knitr::kable(df_table, format="pipe")
+table <- knitr::kable(df_table, format="pipe")
+print(table)
