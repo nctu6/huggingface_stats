@@ -11,8 +11,6 @@ df <- data_files %>%
 
 df_model <- df %>%
   group_by(model_name, date) %>%
-  # summarize(downloads = sum(downloads)) %>%
-  # summarize(downloadsAllTime = max(downloadsAllTime)) %>%
   summarise(across(downloads, sum), across(downloadsAllTime, max)) %>%
   mutate(year = lubridate::year(date),
          month = lubridate::month(date)) %>%

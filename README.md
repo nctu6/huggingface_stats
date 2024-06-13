@@ -6,7 +6,7 @@ Script is run monthly, and a monthly `csv`-file outputted to `/data` folder.
 
 ## Plots
 
-!["Total downloads of KB:s models on Huggingface."](https://github.com/nctu6/huggingface_stats/blob/main/plots/downloads_total.jpg)
+!["Total downloads of TAIDE:s models on Huggingface."](https://github.com/nctu6/huggingface_stats/blob/main/plots/downloads_total.jpg)
 
 !["Huggingface downloads by model plot."](https://github.com/nctu6/huggingface_stats/blob/main/plots/downloads_by_model.jpg)
 

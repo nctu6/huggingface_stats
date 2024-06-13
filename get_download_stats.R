@@ -3,39 +3,36 @@ library(dplyr)
 library(hfhub)
 library(httr)
 
-get_organization_models <- function(org_url){
-  organization <- read_html(org_url)
-  xpath <- "/html/body/div[1]/main/div/section[2]/div[3]/div/div/div"
+hf_token <- Sys.getenv("HUGGING_FACE_HUB_TOKEN")
+my_token <- paste0("Bearer ", hf_token)
 
-  organization_models <- organization %>%
-    html_nodes(xpath=xpath) %>%
-    html_nodes("a") %>%
-    html_attr("href")
+get_organization_models <- function(org){
+  stat_url <- paste0("https://huggingface.co/api/models?author=", org)
+  html <- GET(stat_url, add_headers("Authorization" = my_token)) %>% content(as = "parsed")
+  organization_models <- purrr::map_df(html, ~list("id" = .x$id)) %>%
+    group_by(id) %>%
+    filter(!stringr::str_detect(id, "ModelCardReview|cp.|GGUF")) %>%
+    ungroup()
 
   return(organization_models)
 }
 
-get_organization_datasets <- function(org_url){
-  html <- read_html(org_url)
-  xpath <- "/html/body/div[1]/main/div/section[2]/div[4]/div"
-
-  organization_datasets <- html %>%
-    html_nodes(xpath=xpath) %>%
-    html_nodes("a") %>%
-    html_attr("href")
+get_organization_datasets <- function(org){
+  stat_url <- paste0("https://huggingface.co/api/datasets?author=", org)
+  html <- GET(stat_url, add_headers("Authorization" = my_token)) %>% content(as = "parsed")
+  organization_datasets <- purrr::map_df(html, ~list("id" = .x$id)) %>%
+    group_by(id) %>%
+    filter(!stringr::str_detect(id, "ft")) %>%
+    ungroup()
 
   return(organization_datasets)
 }
 
-get_download_stats <- function(url, my_token, type="model"){
+get_download_stats <- function(url, type="model"){
   if (type == "model"){
-    stat_url <- gsub("https://huggingface.co/", "", url)  %>% paste0("https://huggingface.co/api/models/", ., "?expand%5B%5D=downloads&expand%5B%5D=downloadsAllTime")
-    url <- gsub("https://huggingface.co/", "", url)
-    # downloads <- hub_repo_info(url)["downloads"]$downloads
+    stat_url <- paste0("https://huggingface.co/api/models/", url, "?expand%5B%5D=downloads&expand%5B%5D=downloadsAllTime")
   } else if (type == "dataset") {
-    stat_url <- gsub("https://huggingface.co/datasets/", "", url)  %>% paste0("https://huggingface.co/api/datasets/", ., "?expand%5B%5D=downloads&expand%5B%5D=downloadsAllTime")
-    url <- gsub("https://huggingface.co/datasets/", "", url)
-    # downloads <- hub_dataset_info(url)["downloads"]$downloads
+    stat_url <- paste0("https://huggingface.co/api/datasets/", url, "?expand%5B%5D=downloads&expand%5B%5D=downloadsAllTime")
   }
 
   html <- GET(stat_url, add_headers("Authorization" = my_token)) %>% content(as = "parsed")
@@ -49,20 +46,17 @@ get_download_stats <- function(url, my_token, type="model"){
               ))
 }
 
-hf_token <- Sys.getenv("HUGGING_FACE_HUB_TOKEN")
-my_token <- paste0("Bearer ", hf_token)
-# Copy outer html from Firefox/Chrome Inspect tool after clicking "Expand models"
-model_url <- "https://huggingface.co/taide"
-taide_models <- get_organization_models("taide.html")
-taide_datasets <- get_organization_datasets("taide.html")
 
-# Error handling in case of private models
-taide_models <- taide_models[!stringr::str_detect(taide_models, "Model|cp|GGUF")]
-taide_datasets <- taide_datasets[!stringr::str_detect(taide_datasets, "ft")]
+# model_url <- "https://huggingface.co/taide"
+taide_models <- get_organization_models("taide")
+taide_datasets <- get_organization_datasets("taide")
+
+taide_models <- array(unlist(taide_models))
+taide_datasets <- array(unlist(taide_datasets))
+
 poss_get_download_stats <- purrr::possibly(get_download_stats, otherwise=NULL)
-
-df_model <- purrr::map_df(taide_models, ~poss_get_download_stats(.x, my_token, type="model"))
-df_dataset <- purrr::map_df(taide_datasets, ~poss_get_download_stats(.x, my_token, type="dataset"))
+df_model <- purrr::map_df(taide_models, ~poss_get_download_stats(.x, type="model"))
+df_dataset <- purrr::map_df(taide_datasets, ~poss_get_download_stats(.x, type="dataset"))
 
 # Remove all models that are only tokenizers
 df_model <- df_model %>%
