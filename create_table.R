@@ -11,7 +11,9 @@ df <- data_files %>%
 
 df_model <- df %>%
   group_by(model_name, date) %>%
-  summarize(downloads = sum(downloads)) %>%
+  # summarize(downloads = sum(downloads)) %>%
+  # summarize(downloadsAllTime = max(downloadsAllTime)) %>%
+  summarise(across(downloads, sum), across(downloadsAllTime, max)) %>%
   mutate(year = lubridate::year(date),
          month = lubridate::month(date)) %>%
   arrange(model_name, year, month) %>%
@@ -22,7 +24,7 @@ df_model["month"] <- stringr::str_pad(df_model$month, side = "left", width = 2, 
 df_model["yearmonth"] <- paste(df_model$year, df_model$month, sep = "-")
 
 df_table <- df_model %>%
-  select(model_name, yearmonth, downloads) %>%
+  select(model_name, yearmonth, downloadsAllTime, downloads) %>%
   tidyr::pivot_wider(names_from=yearmonth, values_from=downloads)
 
 
