@@ -1,0 +1,11 @@
+model_url,downloads,downloadsAllTime,organization,model_name,date
+taide/b.1.0.0,0,828,taide,b.1.0.0,2024-09-01
+taide/b.11.0.0,7,1421,taide,b.11.0.0,2024-09-01
+taide/e.1.1.0,0,69,taide,e.1.1.0,2024-09-01
+taide/a.2.0.0,0,131,taide,a.2.0.0,2024-09-01
+taide/TAIDE-LX-7B,860,8590,taide,TAIDE-LX-7B,2024-09-01
+taide/TAIDE-LX-7B-Chat,21600,48607,taide,TAIDE-LX-7B-Chat,2024-09-01
+taide/TAIDE-LX-7B-Chat-4bit,194,1827,taide,TAIDE-LX-7B-Chat-4bit,2024-09-01
+taide/Llama3-TAIDE-LX-8B-Chat-Alpha1,21499,78416,taide,Llama3-TAIDE-LX-8B-Chat-Alpha1,2024-09-01
+taide/Llama3-TAIDE-LX-8B-Chat-Alpha1-4bit,527,2958,taide,Llama3-TAIDE-LX-8B-Chat-Alpha1-4bit,2024-09-01
+taide/llava_llama3_8b_clip336_e,34,34,taide,llava_llama3_8b_clip336_e,2024-09-01
