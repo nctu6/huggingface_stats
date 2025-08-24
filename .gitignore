@@ -3,4 +3,5 @@
 .RData
 .Ruserdata
 .vscode
+.venv
 /*.code-workspace
