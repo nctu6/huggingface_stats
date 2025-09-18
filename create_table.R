@@ -1,42 +1,49 @@
 library(ggplot2)
 library(dplyr)
+library(readr)
+library(tidyr)
+library(lubridate)
+library(stringr)
+library(knitr)
 
 Sys.setlocale("LC_TIME", "C")
 
-# dir.create("plots")
+# 1) Load all CSVs
 data_files <- list.files("data/models", full.names = TRUE)
+df <- data_files %>% purrr::map_df(readr::read_csv)
 
-df <- data_files %>% purrr::map_df(~readr::read_csv(.))
+exclude_models <- c("ModelCardReview", "cp.", "GGUF")
 
-df_model <- df %>%
-  group_by(model_name, date) %>%
-  summarise(downloads = sum(downloads), .groups = "drop") %>%
-  mutate(year = lubridate::year(date),
-         month = lubridate::month(date)) %>%
-  filter(!(model_name %in% c("ModelCardReview", "cp.", "GGUF")))
+# 2) Normalize dates -> year-month (UTC) and build monthly sums
+df_monthly <- df %>%
+  filter(!(model_name %in% exclude_models)) %>%
+  mutate(
+    # robust parse: try datetime first, else Date
+    date_time = suppressWarnings(lubridate::as_datetime(date, tz = "UTC")),
+    date_time = dplyr::if_else(
+      is.na(date_time),
+      lubridate::as_datetime(as.Date(date), tz = "UTC"),
+      date_time
+    ),
+    yearmonth = format(lubridate::floor_date(date_time, "month"), "%Y-%m")
+  ) %>%
+  group_by(model_name, yearmonth) %>%
+  summarise(downloads = sum(downloads, na.rm = TRUE), .groups = "drop")
 
-df_all <- df %>%
-  group_by(model_name) %>%
-  summarise(downloadsAllTime = max(downloadsAllTime), .groups = "drop") %>%
-  filter(!(model_name %in% c("ModelCardReview", "cp.", "GGUF")))
-
-df_model <- df_model %>%
-  mutate(month = stringr::str_pad(month, side = "left", width = 2, pad = "0"),
-         yearmonth = paste(year, month, sep = "-"))
-
-df_table <- df_model %>%
-  select(model_name, yearmonth, downloads) %>%
+# 3) Pivot to wide: one column per year-month
+monthly_wide <- df_monthly %>%
   tidyr::pivot_wider(names_from = yearmonth, values_from = downloads)
 
-# Reorder columns: sort yearmonth from newest to oldest
-date_cols <- names(df_table)[!(names(df_table) %in% c("model_name"))]
-date_cols <- setdiff(date_cols, "downloadsAllTime")
+# 4) Order the month columns (newest -> oldest)
+date_cols <- setdiff(names(monthly_wide), "model_name")
 date_cols_sorted <- sort(date_cols, decreasing = TRUE)
+monthly_wide <- monthly_wide %>% select(model_name, all_of(date_cols_sorted))
 
-df_table <- df_table %>%
-  left_join(df_all, by = "model_name") %>%
-  select(model_name, downloadsAllTime, all_of(date_cols_sorted))
+# 5) Recompute downloadsAllTime from the visible month columns
+monthly_wide <- monthly_wide %>%
+  mutate(downloadsAllTime = rowSums(across(all_of(date_cols_sorted)), na.rm = TRUE)) %>%
+  # place the total right after model_name
+  relocate(downloadsAllTime, .after = model_name)
 
-# Print table
-table <- knitr::kable(df_table, format = "pipe")
-print(table)
+# 6) Print the table
+print(knitr::kable(monthly_wide, format = "pipe"))
