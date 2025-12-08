@@ -3,6 +3,7 @@ library(dplyr)
 library(forcats)
 library(purrr)
 library(readr)
+library(lubridate)
 
 Sys.setlocale("LC_TIME", "C")
 
@@ -12,14 +13,18 @@ Sys.setlocale("LC_TIME", "C")
 data_files <- list.files("data/models", full.names = TRUE)
 
 df <- data_files %>%
-  map_df(~ read_csv(.))
+  map_df(~ read_csv(.)) %>%
+  mutate(
+    date = floor_date(as.Date(date), "month")   # <-- FIXED HERE
+  )
 
 # ---------------------------------------------------------
-# Total downloads per month (NOT filling missing months)
+# Total downloads per month
 # ---------------------------------------------------------
 df_total_sum <- df %>%
   group_by(date) %>%
-  summarize(downloads = sum(downloads), .groups = "drop")
+  summarize(downloads = sum(downloads), .groups = "drop") %>%
+  arrange(date)
 
 # ---------------------------------------------------------
 # Plot: Total downloads per month
@@ -28,13 +33,13 @@ p_dl_total <- ggplot(
   data = df_total_sum,
   aes(x = date, y = downloads)
 ) +
-  geom_line(colour = "firebrick2") +
-  geom_point(shape = 21, size = 1.5, colour = "black", fill = "firebrick2") +
+  geom_line(colour = "firebrick2", na.rm = TRUE) +
+  geom_point(shape = 21, size = 1.5, colour = "black",
+             fill = "firebrick2", na.rm = TRUE) +
   theme_light(base_size = 7) +
   scale_y_continuous(
-    breaks = seq(0, max(df_total_sum$downloads) + 2000, by = 10000),
-    labels = function(x)
-      format(x, big.mark = " ", decimal.mark = ".", scientific = FALSE)
+    breaks = scales::pretty_breaks(n = 8),
+    labels = function(x) format(x, big.mark = " ", decimal.mark = ".", scientific = FALSE)
   ) +
   scale_x_date(
     date_labels = "%Y-%b",
@@ -49,18 +54,19 @@ p_dl_total <- ggplot(
   )
 
 # ---------------------------------------------------------
-# Top 10 models overall
+# Top 10 models
 # ---------------------------------------------------------
 df_model <- df %>%
   group_by(model_name) %>%
   summarize(downloads = sum(downloads), .groups = "drop") %>%
   arrange(desc(downloads)) %>%
-  slice_max(downloads, n = 10)
+  slice(1:10)
 
 df_model_top <- df %>%
   filter(model_name %in% df_model$model_name) %>%
   group_by(date, model_name) %>%
-  summarize(downloads = sum(downloads), .groups = "drop")
+  summarize(downloads = sum(downloads), .groups = "drop") %>%
+  arrange(date)
 
 # ---------------------------------------------------------
 # Plot: Downloads per model (Top 10)
@@ -74,13 +80,12 @@ p_dl_model <- ggplot(
     fill  = fct_reorder(model_name, desc(downloads))
   )
 ) +
-  geom_line() +
-  geom_point(shape = 21, size = 1.5, colour = "black") +
+  geom_line(na.rm = TRUE) +
+  geom_point(shape = 21, size = 1.5, colour = "black", na.rm = TRUE) +
   theme_light(base_size = 7) +
   scale_y_continuous(
-    breaks = seq(0, max(df_model_top$downloads) + 2000, by = 10000),
-    labels = function(x)
-      format(x, big.mark = " ", decimal.mark = ".", scientific = FALSE)
+    breaks = scales::pretty_breaks(n = 8),
+    labels = function(x) format(x, big.mark = " ", decimal.mark = ".", scientific = FALSE)
   ) +
   scale_x_date(
     date_labels = "%Y-%b",
@@ -97,7 +102,7 @@ p_dl_model <- ggplot(
   guides(color = "none")
 
 # ---------------------------------------------------------
-# Save plots
+# Save images
 # ---------------------------------------------------------
 ggsave(
   p_dl_total,
