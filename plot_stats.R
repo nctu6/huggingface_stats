@@ -1,14 +1,13 @@
 library(ggplot2)
 library(dplyr)
 library(forcats)
-library(tidyr)
 library(purrr)
 library(readr)
 
 Sys.setlocale("LC_TIME", "C")
 
 # ---------------------------------------------------------
-# Load all data
+# Load data
 # ---------------------------------------------------------
 data_files <- list.files("data/models", full.names = TRUE)
 
@@ -16,17 +15,11 @@ df <- data_files %>%
   map_df(~ read_csv(.))
 
 # ---------------------------------------------------------
-# Create a complete monthly timeline
-# ---------------------------------------------------------
-all_months <- seq(min(df$date), max(df$date), by = "month")
-
-# ---------------------------------------------------------
-# Total downloads per month (complete missing months)
+# Total downloads per month (NOT filling missing months)
 # ---------------------------------------------------------
 df_total_sum <- df %>%
   group_by(date) %>%
-  summarize(downloads = sum(downloads), .groups = "drop") %>%
-  complete(date = all_months, fill = list(downloads = 0))
+  summarize(downloads = sum(downloads), .groups = "drop")
 
 # ---------------------------------------------------------
 # Plot: Total downloads per month
@@ -45,8 +38,8 @@ p_dl_total <- ggplot(
   ) +
   scale_x_date(
     date_labels = "%Y-%b",
-    breaks = all_months[seq(1, length(all_months), by = 2)],
-    guide = guide_axis(n.dodge = 2)
+    date_breaks = "1 month",
+    guide = guide_axis(check.overlap = TRUE)
   ) +
   expand_limits(y = 0) +
   labs(
@@ -64,21 +57,22 @@ df_model <- df %>%
   arrange(desc(downloads)) %>%
   slice_max(downloads, n = 10)
 
-# Filter to top 10 models and complete timeline
 df_model_top <- df %>%
   filter(model_name %in% df_model$model_name) %>%
   group_by(date, model_name) %>%
-  summarize(downloads = sum(downloads), .groups = "drop") %>%
-  complete(date = all_months, model_name, fill = list(downloads = 0))
+  summarize(downloads = sum(downloads), .groups = "drop")
 
 # ---------------------------------------------------------
-# Plot: Downloads per model (top 10 models)
+# Plot: Downloads per model (Top 10)
 # ---------------------------------------------------------
 p_dl_model <- ggplot(
   data = df_model_top,
-  aes(x = date, y = downloads,
-      color = fct_reorder(model_name, desc(downloads)),
-      fill  = fct_reorder(model_name, desc(downloads)))
+  aes(
+    x = date,
+    y = downloads,
+    color = fct_reorder(model_name, desc(downloads)),
+    fill  = fct_reorder(model_name, desc(downloads))
+  )
 ) +
   geom_line() +
   geom_point(shape = 21, size = 1.5, colour = "black") +
@@ -90,8 +84,8 @@ p_dl_model <- ggplot(
   ) +
   scale_x_date(
     date_labels = "%Y-%b",
-    breaks = all_months[seq(1, length(all_months), by = 2)],
-    guide = guide_axis(n.dodge = 2)
+    date_breaks = "1 month",
+    guide = guide_axis(check.overlap = TRUE)
   ) +
   expand_limits(y = 0) +
   labs(
@@ -103,7 +97,7 @@ p_dl_model <- ggplot(
   guides(color = "none")
 
 # ---------------------------------------------------------
-# Save images
+# Save plots
 # ---------------------------------------------------------
 ggsave(
   p_dl_total,
