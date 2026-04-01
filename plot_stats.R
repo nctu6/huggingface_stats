@@ -1,6 +1,5 @@
 library(ggplot2)
 library(dplyr)
-library(forcats)
 library(purrr)
 library(readr)
 library(lubridate)
@@ -13,7 +12,7 @@ Sys.setlocale("LC_TIME", "C")
 data_files <- list.files("data/models", full.names = TRUE)
 
 df <- data_files %>%
-  map_df(~ read_csv(.)) %>%
+  map_df(~ read_csv(., show_col_types = FALSE)) %>%
   mutate(
     date = floor_date(as.Date(date), "month")   # <-- FIXED HERE
   )
@@ -58,14 +57,17 @@ p_dl_total <- ggplot(
 # ---------------------------------------------------------
 df_model <- df %>%
   group_by(model_name) %>%
-  summarize(downloads = sum(downloads), .groups = "drop") %>%
-  arrange(desc(downloads)) %>%
+  summarize(downloadsAllTime = sum(downloads), .groups = "drop") %>%
+  arrange(desc(downloadsAllTime)) %>%
   slice(1:10)
+
+model_order <- df_model$model_name
 
 df_model_top <- df %>%
   filter(model_name %in% df_model$model_name) %>%
   group_by(date, model_name) %>%
   summarize(downloads = sum(downloads), .groups = "drop") %>%
+  mutate(model_name = factor(model_name, levels = model_order)) %>%
   arrange(date)
 
 # ---------------------------------------------------------
@@ -76,8 +78,8 @@ p_dl_model <- ggplot(
   aes(
     x = date,
     y = downloads,
-    color = fct_reorder(model_name, desc(downloads)),
-    fill  = fct_reorder(model_name, desc(downloads))
+    color = model_name,
+    fill  = model_name
   )
 ) +
   geom_line(na.rm = TRUE) +
@@ -107,6 +109,8 @@ p_dl_model <- ggplot(
 ggsave(
   p_dl_total,
   filename = "plots/downloads_total.jpg",
+  device = "jpeg",
+  type = "cairo",
   dpi = 300,
   width = 1920,
   height = 1080,
@@ -116,9 +120,10 @@ ggsave(
 ggsave(
   p_dl_model,
   filename = "plots/downloads_by_model.jpg",
+  device = "jpeg",
+  type = "cairo",
   dpi = 300,
   width = 1920,
   height = 1080,
   units = "px"
 )
-
