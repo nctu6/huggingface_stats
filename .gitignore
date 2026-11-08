@@ -5,3 +5,6 @@
 .vscode
 .venv
 /*.code-workspace
+
+# Project logs
+logs/
